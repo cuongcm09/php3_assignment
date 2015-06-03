@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use yii\web\IdentityInterface;
 
 /**
  * This is the model class for table "users".
@@ -55,6 +56,14 @@ class Users extends \yii\db\ActiveRecord
         ];
     }
 
+    public function findByUsername($account, $password){
+
+        return Users::find()
+            ->where(['account' => $account,
+                'password' => sha1($password),
+                'record_status' => 1])
+            ->one();
+    }
     /**
      * @return \yii\db\ActiveQuery
      */
@@ -93,5 +102,23 @@ class Users extends \yii\db\ActiveRecord
     public function getVehicles()
     {
         return $this->hasMany(Vehicles::className(), ['user_id' => 'id']);
+    }
+
+    public function login(IdentityInterface $identity, $duration = 0)
+    {
+        if ($this->beforeLogin($identity, false, $duration)) {
+            $this->switchIdentity($identity, $duration);
+            $id = $identity->getId();
+            $ip = Yii::$app->getRequest()->getUserIP();
+            if ($this->enableSession) {
+                $log = "User '$id' logged in from $ip with duration $duration.";
+            } else {
+                $log = "User '$id' logged in from $ip. Session not enabled.";
+            }
+            Yii::info($log, __METHOD__);
+            $this->afterLogin($identity, false, $duration);
+        }
+
+        return !$this->getIsGuest();
     }
 }
